@@ -1,5 +1,7 @@
 import json
 from collections import Counter
+import seaborn
+import matplotlib.pyplot as plt
 
 ''' 读取文件'''
 
@@ -19,9 +21,20 @@ test_data = read_json("dataset/test_data.json")
 # print(train_data1[0])
 
 
-'''查看数据集是否balance'''
+'''查看数据集是否balance 以及每个doc的文本长度'''
 train_data_lable1 = [label["label"] for label in train_data1]
 train_data_lable2 = [label["label"] for label in train_data2]
 
-print(Counter(train_data_lable1))  # Counter({1: 2500, 0: 2500})
-print(Counter(train_data_lable2))  # Counter({0: 11500, 1: 1500})  unbalanced
+# print(Counter(train_data_lable1))  # Counter({1: 2500, 0: 2500})
+# print(Counter(train_data_lable2))  # Counter({0: 11500, 1: 1500})  unbalanced
+
+count_train_data1 = [len(doc["text"]) for doc in train_data1]
+count_train_data2 = [len(doc["text"]) for doc in train_data2]
+# print(count_train_data1)
+seaborn.histplot(count_train_data1)
+plt.show()
+seaborn.histplot(count_train_data2)
+plt.show()
+
+'''bag of word + traditional ML'''
+
