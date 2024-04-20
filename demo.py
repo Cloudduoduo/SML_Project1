@@ -4,6 +4,9 @@ import seaborn
 import matplotlib.pyplot as plt
 from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.model_selection import train_test_split
+from scipy.sparse import vstack
+from sklearn.svm import LinearSVC
+from sklearn.metrics import roc_auc_score
 
 ''' 读取文件'''
 
@@ -84,3 +87,40 @@ X_train2, X_others2, y_train2, y_others2 = train_test_split(train_data2_x,
 X_validation2, X_test2, y_validation2, y_test2 = train_test_split(X_others2, y_others2, test_size=0.5,
                                                                   stratify=y_others2)
 print(X_train2.shape, X_validation2.shape, X_test2.shape)
+# stratify=y_others2 是因为train data中的label严重不平衡，可能导致拆分后有的集label相差太多
+
+X_train = vstack([X_train1, X_train2])
+X_validation = vstack([X_validation1, X_validation2])
+X_test = vstack([X_test1, X_test2])
+
+y_train = y_train1 + y_train2
+y_validation = y_validation1 + y_validation2
+y_test = y_test1 + y_test2
+
+'''SVM'''
+
+svm = LinearSVC()
+svm.fit(X_train, y_train)
+validationPrediction = svm.predict(X_validation)
+
+# 不用accuracy去评估模型。因为数据是不平衡的，所以accuracy无法评估模型。
+auc = roc_auc_score(y_validation, validationPrediction)
+print("auc = ", auc, sep="")
+
+'''hyper-parameter search'''
+
+# for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
+#     svm = LinearSVC(C=c, dual=True)
+#     svm.fit(X_train, y_train)
+#     validationPrediction = svm.predict(X_validation)
+#     auc = roc_auc_score(y_validation, validationPrediction)
+#     print(f"C = {c}, Auc = {auc}")
+# c = 0.1 是最好的
+
+svm = LinearSVC(C=0.1)
+svm.fit(X_train, y_train)
+my_test_prediction = svm.predict(X_test)
+roc_auc_score(y_test, my_test_prediction)
+
+
+'''在真实测试集上测试'''
