@@ -68,7 +68,7 @@ vectorizer.fit(train_data2_doc)
 
 train_data1_x = vectorizer.transform(train_data1_doc)
 train_data2_x = vectorizer.transform(train_data2_doc)
-test_x = vectorizer.transform(test_doc)
+real_test_x = vectorizer.transform(test_doc)
 
 # print(train_data1_x.shape) (5000, 71481)
 # print(train_data2_x.shape) (13000, 71481)
@@ -122,5 +122,14 @@ svm.fit(X_train, y_train)
 my_test_prediction = svm.predict(X_test)
 roc_auc_score(y_test, my_test_prediction)
 
-
 '''在真实测试集上测试'''
+
+svm = LinearSVC(C=0.1)
+svm.fit(X_train, y_train)
+real_test_prediction = svm.predict(real_test_x)
+
+submission_id = [ids["id"] for ids in test_data]
+with open("svm_prediction.csv", "w") as file:
+    file.write("id,class\n")
+    for id_, pred_ in zip(real_test_prediction, real_test_prediction):
+        file.write(f"{id_}, {pred_}\n")
