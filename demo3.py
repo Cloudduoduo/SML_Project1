@@ -1,3 +1,5 @@
+"""预处理中修改ngram以及features的数量"""
+
 import json
 from collections import Counter
 import seaborn
@@ -7,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from scipy.sparse import vstack
 from sklearn.svm import LinearSVC
 from sklearn.metrics import roc_auc_score
-
+from sklearn.feature_extraction.text import TfidfTransformer
 ''' 读取文件'''
 
 
@@ -55,7 +57,9 @@ def tokenizer(doc):
 
 vectorizer = CountVectorizer(
     tokenizer=tokenizer,
-    preprocessor=preprocessor
+    preprocessor=preprocessor,
+    ngram_range=(1, 2),
+    max_features=5000,
 )
 
 train_data1_doc = [doc["text"] for doc in train_data1]
@@ -70,8 +74,17 @@ train_data1_x = vectorizer.transform(train_data1_doc)
 train_data2_x = vectorizer.transform(train_data2_doc)
 real_test_x = vectorizer.transform(test_doc)
 
-# print(train_data1_x.shape) (5000, 71481)
-# print(train_data2_x.shape) (13000, 71481)
+# TF-IDF
+tfidf_transformer = TfidfTransformer()
+tfidf_transformer.fit(train_data1_x)
+tfidf_transformer.fit(train_data2_x)
+
+train_data1_x = tfidf_transformer.transform(train_data1_x)
+train_data2_x = tfidf_transformer.transform(train_data2_x)
+real_test_x = tfidf_transformer.transform(real_test_x)
+
+print(train_data1_x.shape) # (5000, 5000)
+print(train_data2_x.shape) # (13000, 5000)
 
 '''把数据分为训练集，验证集和测试集'''
 X_train1, X_others1, y_train1, y_others1 = train_test_split(train_data1_x,
@@ -105,34 +118,34 @@ validationPrediction = svm.predict(X_validation)
 
 # 不用accuracy去评估模型。因为数据是不平衡的，所以accuracy无法评估模型。
 auc = roc_auc_score(y_validation, validationPrediction)
-print("auc = ", auc, sep="")
+# print("auc = ", auc, sep="")
 
 '''hyper-parameter search
-frequency matrix, feature = 71481
+ngram (1,2)
+frequency matrix, feature = 5000
 '''
 
-
-# for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
-#     svm = LinearSVC(C=c, dual=True)
-#     svm.fit(X_train, y_train)
-#     validationPrediction = svm.predict(X_validation)
-#     auc = roc_auc_score(y_validation, validationPrediction)
-#     print(f"C = {c}, Auc = {auc}")
+for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
+    svm = LinearSVC(C=c, dual=True)
+    svm.fit(X_train, y_train)
+    validationPrediction = svm.predict(X_validation)
+    auc = roc_auc_score(y_validation, validationPrediction)
+    print(f"C = {c}, Auc = {auc}")
 # c = 0.1 是最好的
 
-svm = LinearSVC(C=0.1)
-svm.fit(X_train, y_train)
-my_test_prediction = svm.predict(X_test)
-roc_auc_score(y_test, my_test_prediction)
-
-'''在真实测试集上测试'''
-
-svm = LinearSVC(C=0.1)
-svm.fit(X_train, y_train)
-real_test_prediction = svm.predict(real_test_x)
-
-submission_id = [ids["id"] for ids in test_data]
-with open("svm_prediction.csv", "w") as file:
-    file.write("id,class\n")
-    for id_, pred_ in zip(real_test_prediction, real_test_prediction):
-        file.write(f"{id_}, {pred_}\n")
+# svm = LinearSVC(C=0.1)
+# svm.fit(X_train, y_train)
+# my_test_prediction = svm.predict(X_test)
+# roc_auc_score(y_test, my_test_prediction)
+#
+# '''在真实测试集上测试'''
+#
+# svm = LinearSVC(C=0.1)
+# svm.fit(X_train, y_train)
+# real_test_prediction = svm.predict(real_test_x)
+#
+# submission_id = [ids["id"] for ids in test_data]
+# with open("svm_prediction.csv", "w") as file:
+#     file.write("id,class\n")
+#     for id_, pred_ in zip(real_test_prediction, real_test_prediction):
+#         file.write(f"{id_}, {pred_}\n")
