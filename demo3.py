@@ -1,4 +1,6 @@
-"""预处理中修改ngram以及features的数量"""
+"""预处理中修改ngram以及features的数量
+TF-IDF
+"""
 
 import json
 from collections import Counter
@@ -120,7 +122,8 @@ validationPrediction = svm.predict(X_validation)
 auc = roc_auc_score(y_validation, validationPrediction)
 # print("auc = ", auc, sep="")
 
-'''hyper-parameter search
+'''
+hyper-parameter search
 ngram (1,2)
 frequency matrix, feature = 5000
 '''
