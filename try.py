@@ -35,83 +35,6 @@ train_data_label2 = [label["label"] for label in train_data2]
 count_train_data1 = [len(doc["text"]) for doc in train_data1]
 count_train_data2 = [len(doc["text"]) for doc in train_data2]
 
-'''bag of word + traditional ML'''
-
-
-def preprocessor(doc):
-    res = [str(text) for text in doc]
-    return res
-
-
-def tokenizer(doc):
-    return doc
-
-
-vectorizer = CountVectorizer(
-    tokenizer=tokenizer,
-    preprocessor=preprocessor,
-    ngram_range=(1, 2),
-    max_features=5000,
-)
-
-train_data1_doc = [doc["text"] for doc in train_data1]
-train_data2_doc = [doc["text"] for doc in train_data2]
-test_doc = [doc["text"] for doc in test_data]
-
-# 不可以用两个不一样的vectorizer，因为会得到两个维度不一样的矩阵，并且词也会对不上。最后是要在两个domain train data 上做预测的。 所以构建的特征矩阵必须用同一个词典
-vectorizer.fit(train_data1_doc)
-vectorizer.fit(train_data2_doc)
-
-train_data1_x = vectorizer.transform(train_data1_doc)
-train_data2_x = vectorizer.transform(train_data2_doc)
-real_test_x = vectorizer.transform(test_doc)
-
-# TF-IDF
-tfidf_transformer = TfidfTransformer()
-tfidf_transformer.fit(train_data1_x)
-tfidf_transformer.fit(train_data2_x)
-
-train_data1_x = tfidf_transformer.transform(train_data1_x)
-train_data2_x = tfidf_transformer.transform(train_data2_x)
-real_test_x = tfidf_transformer.transform(real_test_x)
-
-# print(train_data1_x.shape)  # (5000, 5000)
-# print(train_data2_x.shape)  # (13000, 5000)
-
-'''把数据分为训练集，验证集和测试集'''
-X_train1, X_others1, y_train1, y_others1 = train_test_split(train_data1_x,
-                                                            train_data_label1, test_size=0.3,
-                                                            stratify=train_data_label1)
-X_validation1, X_test1, y_validation1, y_test1 = train_test_split(X_others1, y_others1, test_size=0.5,
-                                                                  stratify=y_others1)
-# print(X_train1.shape, X_validation1.shape, X_test1.shape)
-
-X_train2, X_others2, y_train2, y_others2 = train_test_split(train_data2_x,
-                                                            train_data_label2, test_size=0.3,
-                                                            stratify=train_data_label2)
-X_validation2, X_test2, y_validation2, y_test2 = train_test_split(X_others2, y_others2, test_size=0.5,
-                                                                  stratify=y_others2)
-# print(X_train2.shape, X_validation2.shape, X_test2.shape)
-# stratify=y_others2 是因为train data中的label严重不平衡，可能导致拆分后有的集label相差太多
-
-X_train = vstack([X_train1, X_train2])
-X_validation = vstack([X_validation1, X_validation2])
-X_test = vstack([X_test1, X_test2])
-
-y_train = y_train1 + y_train2
-y_validation = y_validation1 + y_validation2
-y_test = y_test1 + y_test2
-
-'''SVM'''
-
-svm = LinearSVC()
-svm.fit(X_train, y_train)
-validationPrediction = svm.predict(X_validation)
-
-# 不用accuracy去评估模型。因为数据是不平衡的，所以accuracy无法评估模型。
-auc = roc_auc_score(y_validation, validationPrediction)
-# print("auc = ", auc, sep="")
-
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -162,7 +85,8 @@ dataset_domain2 = TokenizedTextDataset(text_domain2, y_domain2)
 
 
 def split_dataset(dataset, test_size=0.15, dev_size=0.15):
-    labels = [dataset[idx]['label'] for idx in range(len(dataset))]
+    # labels = [dataset[idx]['label'] for idx in range(len(dataset))]
+    labels = [idx['label'] for idx in dataset]
 
     positive_indexes = [index for index, label in enumerate(labels) if label == 1]
     negative_indexes = [index for index, label in enumerate(labels) if label == 0]
@@ -177,9 +101,9 @@ def split_dataset(dataset, test_size=0.15, dev_size=0.15):
     dev_indices = pos_dev + neg_dev
     test_indices = pos_test + neg_test
 
-    random.shuffle(train_indices)
-    random.shuffle(dev_indices)
-    random.shuffle(test_indices)
+    np.random.shuffle(train_indices)
+    np.random.shuffle(dev_indices)
+    np.random.shuffle(test_indices)
 
     train_set = [dataset[i] for i in train_indices]
     dev_set = [dataset[i] for i in dev_indices]
@@ -194,3 +118,131 @@ d2_train, d2_dev, d2_test = split_dataset(dataset_domain2)
 
 print(len(d1_train), len(d1_dev), len(d1_test))
 print(len(d2_train), len(d2_dev), len(d2_test))
+
+train_data = d1_train + d2_train
+random.shuffle(train_data)
+
+dev_data = d1_dev + d2_dev
+random.shuffle(dev_data)
+
+test_data = d1_test + d2_test
+random.shuffle(test_data)
+
+
+class MyDataModule(pl.LightningDataModule):
+    def __init__(self, train_dataset, val_dataset, test_dataset, collate_fn, batch_size=32):  # 16, 32, 64, 128
+        super().__init__()
+        self.train_dataset = train_dataset
+        self.val_dataset = val_dataset
+        self.test_dataset = test_dataset
+        self.batch_size = batch_size
+        self.collate_fn = collate_fn  # 定义了如何通过一个batch的数据构建x_matrix, y
+
+    def setup(self, stage=None):
+        pass
+
+    def train_dataloader(self):
+        return DataLoader(self.train_dataset, batch_size=self.batch_size, collate_fn=self.collate_fn, shuffle=True)
+
+    def val_dataloader(self):
+        return DataLoader(self.val_dataset, batch_size=self.batch_size, collate_fn=self.collate_fn, shuffle=True)
+
+    def test_dataloader(self):
+        return DataLoader(self.test_dataset, batch_size=self.batch_size, collate_fn=self.collate_fn, shuffle=True)
+
+
+def collate_fn(batch):
+    input_ids = [item['input_ids'] for item in batch]
+    labels = [item['label'] for item in batch]
+
+    # Pad sequences to the maximum length in the batch
+    input_ids = torch.nn.utils.rnn.pad_sequence(input_ids, batch_first=True, padding_value=0)
+
+    return {
+        'input_ids': input_ids,  # "square matrix"
+        'label': torch.stack(labels)
+    }
+
+data_module = MyDataModule(train_data, dev_data, test_data, collate_fn, batch_size=16)
+class LSTMClassifier(pl.LightningModule):
+    def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, num_layers=1):
+        super(LSTMClassifier, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embedding_dim)
+        self.lstm = nn.LSTM(embedding_dim, hidden_dim, num_layers=num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # Return the probability for the sequence
+        embedded = self.embedding(x)  # Convert integer tokens to embeddings
+        lstm_out, _ = self.lstm(embedded)  # Extract LSTM outputs
+        lstm_out = lstm_out[:, -1, :]  # Select the last time-step output
+        output = self.fc(lstm_out)  # Apply the linear layer
+        output = self.sigmoid(output)  # Convert to probabilities
+        return output
+
+    def training_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']  # x
+        labels = batch['label']  # y
+        outputs = self(input_ids)  # compute "sentence probabilities"
+        loss = nn.BCELoss()(outputs.squeeze(), labels)  # compute loss
+        self.log('train_loss', loss)  # save loss to class variable, for retrieval in other components
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        input_ids = batch['input_ids']
+        labels = batch['label']
+        outputs = self(input_ids)
+        loss = nn.BCELoss()(outputs.squeeze(), labels)
+        self.log('val_loss', loss)
+        return loss
+
+    def configure_optimizers(self):
+        return optim.Adam(self.parameters(), lr=0.001)
+
+# 训练模型
+
+# create a model
+
+# LSTM
+vocab_size = 83582  # 词汇表的大小 自己算一下
+
+# tunable hyper-parameter 这些超参数可以更改
+embedding_dim = 50
+hidden_dim = 128
+num_layers = 1
+
+# batch size
+# learning rate (lr) [to be added]
+
+output_dim = 1  # Binary classification 这个不变
+model = LSTMClassifier(vocab_size, embedding_dim, hidden_dim, output_dim, num_layers)
+
+# initialize trainer
+
+trainer = pl.Trainer(
+    max_epochs=5,
+    accelerator="auto"
+)
+
+trainer.fit(model, data_module)
+
+# 在测试集上预测
+
+model.eval()
+
+# Lists to store true labels and predicted probabilities
+true_labels = []
+predicted_probs = []
+
+# Iterate over the test set and make predictions
+with torch.no_grad():
+    for batch in tqdm(data_module.test_dataloader()):
+        input_ids = batch['input_ids']
+        labels = batch['label']
+        outputs = model(input_ids)
+        predicted_probs.extend(outputs.cpu().numpy())
+        true_labels.extend(labels.cpu().numpy())
+
+auc_score = roc_auc_score(true_labels, predicted_probs)
+print("AUC Score:", auc_score)

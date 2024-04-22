@@ -294,6 +294,8 @@ def collate_fn(batch):
 data_module = MyDataModule(train_data, dev_data, test_data, collate_fn, batch_size=16)
 
 
+# model
+
 class LSTMClassifier(pl.LightningModule):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, num_layers=1):
         super(LSTMClassifier, self).__init__()
