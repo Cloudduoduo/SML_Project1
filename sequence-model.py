@@ -32,11 +32,11 @@ test_data = read_json("dataset/test_data.json")
 
 
 '''查看数据集是否balance 以及每个doc的文本长度'''
-train_data_lable1 = [label["label"] for label in train_data1]
-train_data_lable2 = [label["label"] for label in train_data2]
+train_data_label1 = [label["label"] for label in train_data1]
+train_data_label2 = [label["label"] for label in train_data2]
 
-# print(Counter(train_data_lable1))  # Counter({1: 2500, 0: 2500})
-# print(Counter(train_data_lable2))  # Counter({0: 11500, 1: 1500})  unbalanced
+# print(Counter(train_data_label1))  # Counter({1: 2500, 0: 2500})
+# print(Counter(train_data_label2))  # Counter({0: 11500, 1: 1500})  unbalanced
 
 count_train_data1 = [len(doc["text"]) for doc in train_data1]
 count_train_data2 = [len(doc["text"]) for doc in train_data2]
@@ -91,15 +91,15 @@ real_test_x = tfidf_transformer.transform(real_test_x)
 
 '''把数据分为训练集，验证集和测试集'''
 X_train1, X_others1, y_train1, y_others1 = train_test_split(train_data1_x,
-                                                            train_data_lable1, test_size=0.3,
-                                                            stratify=train_data_lable1)
+                                                            train_data_label1, test_size=0.3,
+                                                            stratify=train_data_label1)
 X_validation1, X_test1, y_validation1, y_test1 = train_test_split(X_others1, y_others1, test_size=0.5,
                                                                   stratify=y_others1)
 # print(X_train1.shape, X_validation1.shape, X_test1.shape)
 
 X_train2, X_others2, y_train2, y_others2 = train_test_split(train_data2_x,
-                                                            train_data_lable2, test_size=0.3,
-                                                            stratify=train_data_lable2)
+                                                            train_data_label2, test_size=0.3,
+                                                            stratify=train_data_label2)
 X_validation2, X_test2, y_validation2, y_test2 = train_test_split(X_others2, y_others2, test_size=0.5,
                                                                   stratify=y_others2)
 # print(X_train2.shape, X_validation2.shape, X_test2.shape)
@@ -167,11 +167,12 @@ import torch.nn as nn
 import torch.optim as optim
 from tqdm.notebook import tqdm
 
+
 # 安装torch：去pytorch官网
 
-class TokenizedTexDataset(Dataset):
+class TokenizedTextDataset(Dataset):
     def __init__(self, tokenized_texts, labels, max_len=500):
-        self.tokenized = tokenized_texts
+        self.tokenized_texts = tokenized_texts
         self.labels = labels
         self.max_len = max_len
 
@@ -180,14 +181,15 @@ class TokenizedTexDataset(Dataset):
 
     def __getitem__(self, idx):
         tokenized_text = self.tokenized_texts[idx][:self.max_len]
-        lable = self.lables[idx]
+        label = self.labels[idx]
 
         return {
             "input_ids": torch.tensor(tokenized_text, dtype=torch.long),
-            "lable": torch.tensor(lable, dtype=torch.float32)
+            "label": torch.tensor(label, dtype=torch.float32)
         }
 
 
+# 取到原始文本
 text_domain1 = [x["text"] for x in train_data1]
 text_domain2 = [x["text"] for x in train_data2]
 y_domain1 = [x["label"] for x in train_data1]
@@ -198,8 +200,8 @@ y_domain2 = [x["label"] for x in train_data2]
 
 text_test = [x["text"] for x in test_data]
 
-dataset_domain1 = TokenizedTexDataset(text_domain1, y_domain1)
-dataset_domain2 = TokenizedTexDataset(text_domain2, y_domain2)
+dataset_domain1 = TokenizedTextDataset(text_domain1, y_domain1)
+dataset_domain2 = TokenizedTextDataset(text_domain2, y_domain2)
 
 
 def split_dataset(dataset, test_size=0.15, dev_size=0.15):
@@ -207,15 +209,15 @@ def split_dataset(dataset, test_size=0.15, dev_size=0.15):
     labels = [example["label"].item() for example in dataset]
 
     # find the indices of positive and negative samples
-    positive_indexes = [i for i, label in enumerate(labels) if label == 1]
-    negative_indexes = [i for i, label in enumerate(labels) if label == 0]
+    positive_indexes = [index for index, label in enumerate(labels) if label == 1]
+    negative_indexes = [index for index, label in enumerate(labels) if label == 0]
 
     # split positive and negative samples separately
-    pos_train, pos_test = train_test_split(positive_indexes, test_size=test_size)
-    pos_train, pos_dev = train_test_split(pos_train, test_size=dev_size / (1 - test_size))
+    pos_train, pos_other = train_test_split(positive_indexes, test_size=test_size + dev_size)
+    pos_test, pos_dev = train_test_split(pos_other, test_size=0.5)
 
-    neg_train, neg_test = train_test_split(negative_indexes, test_size=test_size)
-    neg_train, neg_dev = train_test_split(neg_train, test_size=dev_size / (1 - test_size))
+    neg_train, neg_other = train_test_split(negative_indexes, test_size=test_size + dev_size)
+    neg_test, neg_dev = train_test_split(neg_other, test_size=0.5)
 
     # combine positive and negative samples to get train/dev/test splits
     train_indices = pos_train + neg_train
@@ -291,6 +293,7 @@ def collate_fn(batch):
 
 data_module = MyDataModule(train_data, dev_data, test_data, collate_fn, batch_size=16)
 
+
 class LSTMClassifier(pl.LightningModule):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, num_layers=1):
         super(LSTMClassifier, self).__init__()
@@ -308,6 +311,7 @@ class LSTMClassifier(pl.LightningModule):
         output = self.sigmoid(output)  # Convert to probabilities
         return output
 
+
 def training_step(self, batch, batch_idx):
     input_ids = batch['input_ids']  # x
     labels = batch['label']  # y
@@ -315,6 +319,7 @@ def training_step(self, batch, batch_idx):
     loss = nn.BCELoss()(outputs.squeeze(), labels)  # compute loss
     self.log('train_loss', loss)  # save loss to class variable, for retrieval in other components
     return loss
+
 
 def validation_step(self, batch, batch_idx):
     input_ids = batch['input_ids']
@@ -324,8 +329,10 @@ def validation_step(self, batch, batch_idx):
     self.log('val_loss', loss)
     return loss
 
+
 def configure_optimizers(self):
     return optim.Adam(self.parameters(), lr=0.001)
+
 
 '''train model'''
 
@@ -353,7 +360,6 @@ trainer = pl.Trainer(
 )
 
 trainer.fit(model, data_module)
-
 
 model.eval()
 
