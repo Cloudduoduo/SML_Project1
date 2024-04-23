@@ -119,13 +119,13 @@ ngram (1,2)
 frequency matrix, feature = 5000
 '''
 
-for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
-    svm = LinearSVC(C=c, dual=True)
-    svm.fit(X_train, y_train)
-    validationPrediction = svm.predict(X_validation)
-    auc = roc_auc_score(y_validation, validationPrediction)
-    print(f"C = {c}, Auc = {auc}")
-# c = 0.1 是最好的
+# for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
+#     svm = LinearSVC(C=c, dual=True)
+#     svm.fit(X_train, y_train)
+#     validationPrediction = svm.predict(X_validation)
+#     auc = roc_auc_score(y_validation, validationPrediction)
+#     print(f"C = {c}, Auc = {auc}")
+# c = 10 是最好的
 
 svm = LinearSVC(C=0.1)
 svm.fit(X_train, y_train)
@@ -134,12 +134,12 @@ roc_auc_score(y_test, my_test_prediction)
 
 '''在真实测试集上测试'''
 
-svm = LinearSVC(C=0.1)
+svm = LinearSVC(C=10)
 svm.fit(X_train, y_train)
 real_test_prediction = svm.predict(real_test_x)
 
 submission_id = [ids["id"] for ids in test_data]
-with open("svm_prediction+ngram.csv", "w") as file:
+with open("svm_prediction+ng+tf.csv", "w") as file:
     file.write("id,class\n")
     for id_, pred_ in zip(submission_id, real_test_prediction):
         file.write(f"{id_}, {pred_}\n")
