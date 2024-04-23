@@ -1,3 +1,5 @@
+"""预处理中修改ngram以及features的数量"""
+
 import json
 from collections import Counter
 import seaborn
@@ -7,7 +9,6 @@ from sklearn.model_selection import train_test_split
 from scipy.sparse import vstack
 from sklearn.svm import LinearSVC
 from sklearn.metrics import roc_auc_score
-from imblearn.over_sampling import RandomOverSampler
 
 ''' 读取文件'''
 
@@ -28,8 +29,8 @@ test_data = read_json("dataset/test_data.json")
 
 
 '''查看数据集是否balance 以及每个doc的文本长度'''
-train_data_label1 = [label["label"] for label in train_data1]
-train_data_label2 = [label["label"] for label in train_data2]
+train_data_lable1 = [label["label"] for label in train_data1]
+train_data_lable2 = [label["label"] for label in train_data2]
 
 # print(Counter(train_data_lable1))  # Counter({1: 2500, 0: 2500})
 # print(Counter(train_data_lable2))  # Counter({0: 11500, 1: 1500})  unbalanced
@@ -56,7 +57,9 @@ def tokenizer(doc):
 
 vectorizer = CountVectorizer(
     tokenizer=tokenizer,
-    preprocessor=preprocessor
+    preprocessor=preprocessor,
+    ngram_range=(1, 2),
+    max_features=5000,
 )
 
 train_data1_doc = [doc["text"] for doc in train_data1]
@@ -71,33 +74,24 @@ train_data1_x = vectorizer.transform(train_data1_doc)
 train_data2_x = vectorizer.transform(train_data2_doc)
 real_test_x = vectorizer.transform(test_doc)
 
-# print(train_data1_x.shape) (5000, 71481)
-# print(train_data2_x.shape) (13000, 71481)
+# print(train_data1_x.shape) # (5000, 5000)
+# print(train_data2_x.shape) # (13000, 5000)
 
 '''把数据分为训练集，验证集和测试集'''
 X_train1, X_others1, y_train1, y_others1 = train_test_split(train_data1_x,
-                                                            train_data_label1, test_size=0.3,
-                                                            stratify=train_data_label1)
+                                                            train_data_lable1, test_size=0.3,
+                                                            stratify=train_data_lable1)
 X_validation1, X_test1, y_validation1, y_test1 = train_test_split(X_others1, y_others1, test_size=0.5,
                                                                   stratify=y_others1)
 print(X_train1.shape, X_validation1.shape, X_test1.shape)
 
 X_train2, X_others2, y_train2, y_others2 = train_test_split(train_data2_x,
-                                                            train_data_label2, test_size=0.3,
-                                                            stratify=train_data_label2)
+                                                            train_data_lable2, test_size=0.3,
+                                                            stratify=train_data_lable2)
 X_validation2, X_test2, y_validation2, y_test2 = train_test_split(X_others2, y_others2, test_size=0.5,
                                                                   stratify=y_others2)
 print(X_train2.shape, X_validation2.shape, X_test2.shape)
 # stratify=y_others2 是因为train data中的label严重不平衡，可能导致拆分后有的集label相差太多
-# # 初始化 RandomOverSampler 实例
-# ros = RandomOverSampler(random_state=42)
-#
-# # 只对 train_data2 的训练数据应用过采样
-# X_train2_resampled, y_train2_resampled = ros.fit_resample(X_train2, y_train2)
-#
-# # 合并来自 domain1 和经过过采样的 domain2 的训练数据
-# X_train = vstack([X_train1, X_train2_resampled])
-# y_train = y_train1 + y_train2_resampled
 
 X_train = vstack([X_train1, X_train2])
 X_validation = vstack([X_validation1, X_validation2])
@@ -118,31 +112,30 @@ auc = roc_auc_score(y_validation, validationPrediction)
 print("auc = ", auc, sep="")
 
 '''hyper-parameter search
-frequency matrix, feature = 71481
+frequency matrix, feature = 5000
 '''
 
-
-# for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
-#     svm = LinearSVC(C=c, dual=True)
-#     svm.fit(X_train, y_train)
-#     validationPrediction = svm.predict(X_validation)
-#     auc = roc_auc_score(y_validation, validationPrediction)
-#     print(f"C = {c}, Auc = {auc}")
+for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
+    svm = LinearSVC(C=c, dual=True)
+    svm.fit(X_train, y_train)
+    validationPrediction = svm.predict(X_validation)
+    auc = roc_auc_score(y_validation, validationPrediction)
+    print(f"C = {c}, Auc = {auc}")
 # c = 0.1 是最好的
 
-svm = LinearSVC(C=0.1)
-svm.fit(X_train, y_train)
-my_test_prediction = svm.predict(X_test)
-roc_auc_score(y_test, my_test_prediction)
-
-'''在真实测试集上测试'''
-
-svm = LinearSVC(C=0.1)
-svm.fit(X_train, y_train)
-real_test_prediction = svm.predict(real_test_x)
-
-submission_id = [ids["id"] for ids in test_data]
-with open("svm_prediction.csv", "w") as file:
-    file.write("id,class\n")
-    for id_, pred_ in zip(submission_id, real_test_prediction):
-        file.write(f"{id_}, {pred_}\n")
+# svm = LinearSVC(C=0.1)
+# svm.fit(X_train, y_train)
+# my_test_prediction = svm.predict(X_test)
+# roc_auc_score(y_test, my_test_prediction)
+#
+# '''在真实测试集上测试'''
+#
+# svm = LinearSVC(C=0.1)
+# svm.fit(X_train, y_train)
+# real_test_prediction = svm.predict(real_test_x)
+#
+# submission_id = [ids["id"] for ids in test_data]
+# with open("svm_prediction.csv", "w") as file:
+#     file.write("id,class\n")
+#     for id_, pred_ in zip(real_test_prediction, real_test_prediction):
+#         file.write(f"{id_}, {pred_}\n")
