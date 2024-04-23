@@ -8,7 +8,7 @@ from scipy.sparse import vstack
 from sklearn.svm import LinearSVC
 from sklearn.metrics import roc_auc_score
 from imblearn.over_sampling import RandomOverSampler
-
+import random
 ''' 读取文件'''
 
 
@@ -25,14 +25,31 @@ train_data2 = read_json("dataset/domain2_train_data.json")
 test_data = read_json("dataset/test_data.json")
 
 # print(train_data1[0])
+# print(train_data2)
+# # 分离不同类别的样本
+# class_0_samples = [sample for sample in train_data2 if sample['label'] == 0]
+# class_1_samples = [sample for sample in train_data2 if sample['label'] == 1]
+# # print(len(class_0_samples))
+# # 从类别0的样本中随机选择1500个
+# selected_class_0_samples = random.sample(class_0_samples, 1500)
+#
+# # 合并已选择的类别0样本和所有类别1样本
+# train_data1 = selected_class_0_samples + class_1_samples
+class_0_samples = [sample for sample in train_data2 if sample['label'] == 0]
+class_1_samples = [sample for sample in train_data2 if sample['label'] == 1]
+# print(len(class_0_samples))
+# 从类别0的样本中随机选择1500个
+selected_class_1_samples = [random.choice(class_1_samples) for _ in range(11500)]
 
-
+# 合并已选择的类别0样本和所有类别1样本
+train_data2 = selected_class_1_samples + class_0_samples
+# 这里你可以将balanced_data保存回文件或进行进一步的处理
 '''查看数据集是否balance 以及每个doc的文本长度'''
 train_data_label1 = [label["label"] for label in train_data1]
 train_data_label2 = [label["label"] for label in train_data2]
 
-# print(Counter(train_data_lable1))  # Counter({1: 2500, 0: 2500})
-# print(Counter(train_data_lable2))  # Counter({0: 11500, 1: 1500})  unbalanced
+# print(Counter(train_data_label1))  # Counter({1: 2500, 0: 2500})
+print(Counter(train_data_label2))  # Counter({0: 11500, 1: 1500})  unbalanced
 
 count_train_data1 = [len(doc["text"]) for doc in train_data1]
 count_train_data2 = [len(doc["text"]) for doc in train_data2]
@@ -89,21 +106,21 @@ X_validation2, X_test2, y_validation2, y_test2 = train_test_split(X_others2, y_o
                                                                   stratify=y_others2)
 print(X_train2.shape, X_validation2.shape, X_test2.shape)
 # stratify=y_others2 是因为train data中的label严重不平衡，可能导致拆分后有的集label相差太多
-# # 初始化 RandomOverSampler 实例
-# ros = RandomOverSampler(random_state=42)
-#
-# # 只对 train_data2 的训练数据应用过采样
-# X_train2_resampled, y_train2_resampled = ros.fit_resample(X_train2, y_train2)
-#
-# # 合并来自 domain1 和经过过采样的 domain2 的训练数据
-# X_train = vstack([X_train1, X_train2_resampled])
-# y_train = y_train1 + y_train2_resampled
+# 初始化 RandomOverSampler 实例
+ros = RandomOverSampler(random_state=42)
 
-X_train = vstack([X_train1, X_train2])
+# 只对 train_data2 的训练数据应用过采样
+X_train2_resampled, y_train2_resampled = ros.fit_resample(X_train2, y_train2)
+
+# # 合并来自 domain1 和经过过采样的 domain2 的训练数据
+X_train = vstack([X_train1, X_train2_resampled])
+y_train = y_train1 + y_train2_resampled
+
+# X_train = vstack([X_train1, X_train2])
 X_validation = vstack([X_validation1, X_validation2])
 X_test = vstack([X_test1, X_test2])
 
-y_train = y_train1 + y_train2
+# y_train = y_train1 + y_train2
 y_validation = y_validation1 + y_validation2
 y_test = y_test1 + y_test2
 
@@ -122,19 +139,19 @@ frequency matrix, feature = 71481
 '''
 
 
-# for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
-#     svm = LinearSVC(C=c, dual=True)
-#     svm.fit(X_train, y_train)
-#     validationPrediction = svm.predict(X_validation)
-#     auc = roc_auc_score(y_validation, validationPrediction)
-#     print(f"C = {c}, Auc = {auc}")
+for c in [1, 2, 3, 4, 5, 10, 20]:
+    svm = LinearSVC(C=c, dual=True)
+    svm.fit(X_train, y_train)
+    validationPrediction = svm.predict(X_validation)
+    auc = roc_auc_score(y_validation, validationPrediction)
+    print(f"C = {c}, Auc = {auc}")
 # c = 0.1 是最好的
 
-svm = LinearSVC(C=0.1)
-svm.fit(X_train, y_train)
-my_test_prediction = svm.predict(X_test)
-test_auc = roc_auc_score(y_test, my_test_prediction)
-print("test Prediction auc = ", auc, sep="")
+# svm = LinearSVC(C=11)
+# svm.fit(X_train, y_train)
+# my_test_prediction = svm.predict(X_test)
+# test_auc = roc_auc_score(y_test, my_test_prediction)
+# print("test Prediction auc = ", auc, sep="")
 
 '''在真实测试集上测试'''
 
