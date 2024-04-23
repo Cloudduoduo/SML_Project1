@@ -134,5 +134,5 @@ real_test_prediction = svm.predict(real_test_x)
 submission_id = [ids["id"] for ids in test_data]
 with open("svm_prediction.csv", "w") as file:
     file.write("id,class\n")
-    for id_, pred_ in zip(real_test_prediction, real_test_prediction):
+    for id_, pred_ in zip(submission_id, real_test_prediction):
         file.write(f"{id_}, {pred_}\n")

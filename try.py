@@ -163,7 +163,10 @@ def collate_fn(batch):
         'label': torch.stack(labels)
     }
 
+
 data_module = MyDataModule(train_data, dev_data, test_data, collate_fn, batch_size=16)
+
+
 class LSTMClassifier(pl.LightningModule):
     def __init__(self, vocab_size, embedding_dim, hidden_dim, output_dim, num_layers=1):
         super(LSTMClassifier, self).__init__()
@@ -199,6 +202,7 @@ class LSTMClassifier(pl.LightningModule):
 
     def configure_optimizers(self):
         return optim.Adam(self.parameters(), lr=0.001)
+
 
 # 训练模型
 
