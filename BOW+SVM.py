@@ -27,19 +27,19 @@ test_data = read_json("dataset/test_data.json")
 # print(train_data1[0])
 # print(train_data2)
 # # 分离不同类别的样本
-# class_0_samples = [sample for sample in train_data2 if sample['label'] == 0]
-# class_1_samples = [sample for sample in train_data2 if sample['label'] == 1]
-# # print(len(class_0_samples))
-# # 从类别0的样本中随机选择1500个
-# selected_class_0_samples = random.sample(class_0_samples, 1500)
-#
-# # 合并已选择的类别0样本和所有类别1样本
-# train_data1 = selected_class_0_samples + class_1_samples
 class_0_samples = [sample for sample in train_data2 if sample['label'] == 0]
 class_1_samples = [sample for sample in train_data2 if sample['label'] == 1]
 # print(len(class_0_samples))
 # 从类别0的样本中随机选择1500个
-selected_class_1_samples = [random.choice(class_1_samples) for _ in range(11500)]
+selected_class_0_samples = random.sample(class_0_samples, 3000)
+
+# 合并已选择的类别0样本和所有类别1样本
+train_data1 = selected_class_0_samples + class_1_samples
+class_0_samples = [sample for sample in train_data2 if sample['label'] == 0]
+class_1_samples = [sample for sample in train_data2 if sample['label'] == 1]
+# print(len(class_0_samples))
+# 从类别0的样本中随机选择1500个
+selected_class_1_samples = [random.choice(class_1_samples) for _ in range(3000)]
 
 # 合并已选择的类别0样本和所有类别1样本
 train_data2 = selected_class_1_samples + class_0_samples
