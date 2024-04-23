@@ -26,7 +26,6 @@ train_data1 = read_json("dataset/domain1_train_data.json")
 train_data2 = read_json("dataset/domain2_train_data.json")
 test_data = read_json("dataset/test_data.json")
 
-# print(train_data1[0])
 
 
 '''查看数据集是否balance 以及每个doc的文本长度'''
@@ -36,13 +35,6 @@ train_data_label2 = [label["label"] for label in train_data2]
 # print(Counter(train_data_lable1))  # Counter({1: 2500, 0: 2500})
 # print(Counter(train_data_lable2))  # Counter({0: 11500, 1: 1500})  unbalanced
 
-count_train_data1 = [len(doc["text"]) for doc in train_data1]
-count_train_data2 = [len(doc["text"]) for doc in train_data2]
-# print(count_train_data1)
-seaborn.histplot(count_train_data1)
-# plt.show()
-seaborn.histplot(count_train_data2)
-# plt.show()
 
 '''bag of word + traditional ML'''
 
@@ -84,8 +76,8 @@ train_data1_x = tfidf_transformer.transform(train_data1_x)
 train_data2_x = tfidf_transformer.transform(train_data2_x)
 real_test_x = tfidf_transformer.transform(real_test_x)
 
-print(train_data1_x.shape) # (5000, 5000)
-print(train_data2_x.shape) # (13000, 5000)
+# print(train_data1_x.shape) # (5000, 5000)
+# print(train_data2_x.shape) # (13000, 5000)
 
 '''把数据分为训练集，验证集和测试集'''
 X_train1, X_others1, y_train1, y_others1 = train_test_split(train_data1_x,
@@ -118,8 +110,9 @@ svm.fit(X_train, y_train)
 validationPrediction = svm.predict(X_validation)
 
 # 不用accuracy去评估模型。因为数据是不平衡的，所以accuracy无法评估模型。
-auc = roc_auc_score(y_validation, validationPrediction)
-# print("auc = ", auc, sep="")
+validation_auc = roc_auc_score(y_validation, validationPrediction)
+print("validation auc = ", validation_auc, sep="")
+
 
 '''
 hyper-parameter search
