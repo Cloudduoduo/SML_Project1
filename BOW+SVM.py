@@ -51,13 +51,7 @@ train_data_label2 = [label["label"] for label in train_data2]
 # print(Counter(train_data_label1))  # Counter({1: 2500, 0: 2500})
 print(Counter(train_data_label2))  # Counter({0: 11500, 1: 1500})  unbalanced
 
-count_train_data1 = [len(doc["text"]) for doc in train_data1]
-count_train_data2 = [len(doc["text"]) for doc in train_data2]
-# print(count_train_data1)
-seaborn.histplot(count_train_data1)
-# plt.show()
-seaborn.histplot(count_train_data2)
-# plt.show()
+
 
 '''bag of word + traditional ML'''
 
