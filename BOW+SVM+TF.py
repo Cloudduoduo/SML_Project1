@@ -12,7 +12,9 @@ from scipy.sparse import vstack
 from sklearn.svm import LinearSVC
 from sklearn.metrics import roc_auc_score
 from sklearn.feature_extraction.text import TfidfTransformer
+
 ''' 读取文件'''
+
 
 def read_json(filename):
     res = []
@@ -25,8 +27,6 @@ def read_json(filename):
 train_data1 = read_json("dataset/domain1_train_data.json")
 train_data2 = read_json("dataset/domain2_train_data.json")
 test_data = read_json("dataset/test_data.json")
-
-
 
 '''查看数据集是否balance 以及每个doc的文本长度'''
 train_data_label1 = [label["label"] for label in train_data1]
@@ -113,7 +113,6 @@ validationPrediction = svm.predict(X_validation)
 validation_auc = roc_auc_score(y_validation, validationPrediction)
 print("validation auc = ", validation_auc, sep="")
 
-
 '''
 hyper-parameter search
 ngram (1,2)
@@ -128,19 +127,19 @@ for c in [0.001, 0.01, 0.1, 1, 10, 100, 1000]:
     print(f"C = {c}, Auc = {auc}")
 # c = 0.1 是最好的
 
-# svm = LinearSVC(C=0.1)
-# svm.fit(X_train, y_train)
-# my_test_prediction = svm.predict(X_test)
-# roc_auc_score(y_test, my_test_prediction)
-#
-# '''在真实测试集上测试'''
-#
-# svm = LinearSVC(C=0.1)
-# svm.fit(X_train, y_train)
-# real_test_prediction = svm.predict(real_test_x)
-#
-# submission_id = [ids["id"] for ids in test_data]
-# with open("svm_prediction.csv", "w") as file:
-#     file.write("id,class\n")
-#     for id_, pred_ in zip(real_test_prediction, real_test_prediction):
-#         file.write(f"{id_}, {pred_}\n")
+svm = LinearSVC(C=0.1)
+svm.fit(X_train, y_train)
+my_test_prediction = svm.predict(X_test)
+roc_auc_score(y_test, my_test_prediction)
+
+'''在真实测试集上测试'''
+
+svm = LinearSVC(C=0.1)
+svm.fit(X_train, y_train)
+real_test_prediction = svm.predict(real_test_x)
+
+submission_id = [ids["id"] for ids in test_data]
+with open("svm_prediction+ngram.csv", "w") as file:
+    file.write("id,class\n")
+    for id_, pred_ in zip(submission_id, real_test_prediction):
+        file.write(f"{id_}, {pred_}\n")
