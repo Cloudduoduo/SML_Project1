@@ -135,7 +135,7 @@ svm.fit(X_train, y_train)
 real_test_prediction = svm.predict(real_test_x)
 
 submission_id = [ids["id"] for ids in test_data]
-with open("svm_prediction.csv", "w") as file:
+with open("svm_prediction+ngram.csv", "w") as file:
     file.write("id,class\n")
     for id_, pred_ in zip(real_test_prediction, real_test_prediction):
         file.write(f"{id_}, {pred_}\n")

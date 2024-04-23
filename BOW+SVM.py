@@ -105,7 +105,7 @@ validationPrediction = svm.predict(X_validation)
 
 # 不用accuracy去评估模型。因为数据是不平衡的，所以accuracy无法评估模型。
 auc = roc_auc_score(y_validation, validationPrediction)
-print("auc = ", auc, sep="")
+print("validation Prediction auc = ", auc, sep="")
 
 '''hyper-parameter search
 frequency matrix, feature = 71481
@@ -123,7 +123,8 @@ frequency matrix, feature = 71481
 svm = LinearSVC(C=0.1)
 svm.fit(X_train, y_train)
 my_test_prediction = svm.predict(X_test)
-roc_auc_score(y_test, my_test_prediction)
+test_auc = roc_auc_score(y_test, my_test_prediction)
+print("test Prediction auc = ", auc, sep="")
 
 '''在真实测试集上测试'''
 
